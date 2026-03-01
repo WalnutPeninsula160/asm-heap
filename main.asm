@@ -34,9 +34,9 @@ _alloc_mem:
 _alloc_mem.J0:
 	mov	qword	[rbp-0x8],	rdi
 ;	scan through the heap segment
-	mov	rax,	qword	[start_heap_ptr]
-	mov	rbx,	rax
+	mov	rbx,	qword	[start_heap_ptr]
 	mov	qword	[rbp-0x10],	rbx
+	xor	rdx,	rdx
 _alloc_mem.J1:
 	cmp	rbx,	qword	[end_heap_ptr]	; check if the program break has been reached
 	jae	_alloc_mem.J3
@@ -44,7 +44,7 @@ _alloc_mem.J1:
 	jne	_alloc_mem.J2
 	add	rdx,	qword	[rbx+0x8]
 	cmp	rdx,	qword	[rbp-0x8]
-	jbe	_alloc_mem.J4
+	jae	_alloc_mem.J4
 	add	rbx,	qword	[rbx+0x8]
 	jmp	_alloc_mem.J1
 _alloc_mem.J2:
@@ -127,7 +127,7 @@ _start:
 	add	rax,	0x8
 _start.J0:
 	mov	rbp,	rsp
-	sub	rsp,	0x18
+	sub	rsp,	0x10
 	mov	qword	[start_heap_ptr],	rax
 ;	align the program break to an 8 byte boundary
 	mov	rax,	0xC
@@ -143,7 +143,16 @@ _start.J0:
 	mov	qword	[rbx+0x8],	rax
 	xor	rax,	rax
 	xor	rbx,	rbx
-;	actual program stuff
+	call	main
+	mov	rsp,	rbp
+	mov	rax,	0x3C
+	syscall
+
+; main function bc im too lazy to remember where the actual code part starts in the _start function (even with a comment)
+main:
+	push	rbp
+	mov	rbp,	rsp
+	sub	rsp,	0x18
 	mov	rdi,	0x20
 	call	_alloc_mem
 	;mov	rsi,	rax
@@ -159,12 +168,6 @@ _start.J0:
 	call	_newline
 	mov	rdi,	qword	[rbp-0x8]
 	call	_free_mem
-	mov	rdi,	0x10
-	call	_alloc_mem
-	;mov	rsi,	rax
-	lea	rsi,	[rax-0x10]
-	call	_printhex
-	call	_newline
 	mov	rsi,	qword	[rbp-0x8]
 	mov	rsi,	qword	[rsi-0x10]
 	call	_printhex
@@ -173,7 +176,12 @@ _start.J0:
 	mov	rsi,	qword	[rsi-0x8]
 	call	_printhex
 	call	_newline
-;	reset stack and exit program
+	mov	rdi,	0x10
+	call	_alloc_mem
+	;mov	rsi,	rax
+	lea	rsi,	[rax-0x10]
+	call	_printhex
+	call	_newline
 	mov	rsp,	rbp
-	mov	rax,	0x3C
-	syscall
+	pop	rbp
+	ret
