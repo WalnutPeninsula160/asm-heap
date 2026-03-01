@@ -8,85 +8,97 @@ start_heap_ptr	dq	0x0
 end_heap_ptr	dq	0x0
 
 section	.bss
-start_bss:	resb	4096	; allocate 4KB on the bss segment for some reason;
-end_bss:				; used to print the end of the bss segment (the start of the new heap segment)
+start_bss:
+end_bss:
 
 section	.text
 global	_start
 
-; rdi is number of bytes to be allocated
-; variables:
-;	rbp-0x8: quadword storing the size needed for the allocation
-;	rbp-0x10: quadword storing the address of the possibly available block of memory for allocation
 _alloc_mem:
-;	creating a new stack frame for variables (bc syscalls clobber registers)
 	push	rbp
 	mov	rbp,	rsp
-	sub	rsp,	0x10	; whatever number of bytes is needed for this function
-;	calculate the number of bytes to allocate (aligned to 8 bytes)
-	add	rdi,	0x10	; 2 more quadwords are needed for flags and size checking
+	sub	rsp,	0x10
+	add	rdi,	0x10
 	mov	rax,	0xFFFFFFFFFFFFFFF8
 	and	rax,	rdi
 	cmp	rax,	rdi
-	je	_alloc_mem.J0
+	je	_alloc_memJ0
 	add	rax,	0x8
 	mov	rdi,	rax
-_alloc_mem.J0:
+_alloc_memJ0:
 	mov	qword	[rbp-0x8],	rdi
-;	scan through the heap segment
 	mov	rbx,	qword	[start_heap_ptr]
 	mov	qword	[rbp-0x10],	rbx
 	xor	rdx,	rdx
-_alloc_mem.J1:
-	cmp	rbx,	qword	[end_heap_ptr]	; check if the program break has been reached
-	jae	_alloc_mem.J3
-	cmp	qword	[rbx],	0	; check if the memory block is free (full zeros means free block)
-	jne	_alloc_mem.J2
+_alloc_memJ1:
+	cmp	rbx,	qword	[end_heap_ptr]
+	jae	_alloc_memJ3
+	cmp	qword	[rbx],	0
+	jne	_alloc_memJ2
 	add	rdx,	qword	[rbx+0x8]
 	cmp	rdx,	qword	[rbp-0x8]
-	jae	_alloc_mem.J4
+	jae	_alloc_memJ4
 	add	rbx,	qword	[rbx+0x8]
-	jmp	_alloc_mem.J1
-_alloc_mem.J2:
+	jmp	_alloc_memJ1
+_alloc_memJ2:
 	add	rbx,	qword	[rbx+0x8]
 	mov	qword	[rbp-0x10],	rbx
 	xor	rdx,	rdx
-	jmp	_alloc_mem.J1
-_alloc_mem.J3:
-	; extend the program break according to [rbp-0x8] and rdx
+	jmp	_alloc_memJ1
+_alloc_memJ3:
 	mov	rdi,	qword	[rbp-0x8]
 	sub	rdi,	rdx
 	add	rdi,	qword	[end_heap_ptr]
 	mov	rax,	0xC
 	syscall
 	mov	qword	[end_heap_ptr],	rax
-_alloc_mem.J4:
-;	allocate the memory
+_alloc_memJ4:
 	mov	rax,	qword	[rbp-0x10]
 	mov	rdi,	qword	[rbp-0x8]
 	mov	qword	[rax],	0x1
 	mov	qword	[rax+0x8],	rdi
 	sub	rdx,	rdi
 	cmp	rdx,	0x10
-	jb	_alloc_mem.J5
+	jb	_alloc_memJ5
 	add	rax,	rdi
 	mov	qword	[rax],	0x0
 	mov	qword	[rax+0x8],	rdx
-	jmp	_alloc_mem.J6	
-_alloc_mem.J5:
+	jmp	_alloc_memJ6	
+_alloc_memJ5:
 	add	qword	[rax+0x8],	rdx
-_alloc_mem.J6:
+_alloc_memJ6:
 	mov	rax,	qword	[rbp-0x10]
 	add	rax,	0x10
-;	restore the stack to its state when the function was called
 	mov	rsp,	rbp
 	pop	rbp
 	ret
 
 ; rdi is a pointer to the memory to be freed
 _free_mem:
+	push	rbp
+	mov	rbp,	rsp
+	sub	rsp,	0x10
 	xor	rax,	rax
-	mov	qword	[rdi-0x10],	rax
+	sub	rdi,	0x10
+	mov	qword	[rdi],	rax
+	mov	qword	[rbp-0x8],	rdi
+	mov	rbx,	qword	[rdi+0x8]
+	mov	qword	[rbp-0x10],	rbx
+	lea	rdx,	[rdi+rbx]
+_free_memJ0:
+	cmp	rdx,	qword	[end_heap_ptr]
+	jae	_free_memJ1
+	cmp	qword	[rdi+rbx],	0
+	jne	_free_memJ1
+	add	rbx,	qword	[rdx+0x8]
+	lea	rdx,	[rdi+rbx]
+	jmp	_free_memJ0
+_free_memJ1:
+	mov	qword	[rdi+0x8],	rbx
+	jmp	_free_memJ2
+_free_memJ2:
+	mov	rsp,	rbp
+	pop	rbp
 	ret
 
 _newline:
@@ -123,9 +135,9 @@ _start:
 	mov	rax,	0xFFFFFFFFFFFFFFF8
 	and	rax,	end_bss
 	cmp	rax,	end_bss
-	je	_start.J0
+	je	_startJ0
 	add	rax,	0x8
-_start.J0:
+_startJ0:
 	mov	rbp,	rsp
 	sub	rsp,	0x10
 	mov	qword	[start_heap_ptr],	rax
@@ -153,35 +165,24 @@ main:
 	push	rbp
 	mov	rbp,	rsp
 	sub	rsp,	0x18
-	mov	rdi,	0x20
+	mov	rsi,	qword	[end_heap_ptr]
+	call	_printhex
+	call	_newline
+	mov	rdi,	qword	[end_heap_ptr]
+	mov	rax,	qword	[start_heap_ptr]
+	sub	rdi,	rax
+	sub	rdi,	0xF
+	;add	rdi,	0x20
 	call	_alloc_mem
-	;mov	rsi,	rax
-	lea	rsi,	[rax-0x10]
+	mov	rsi,	rax
 	mov	qword	[rbp-0x8],	rax
 	call	_printhex
 	call	_newline
-	mov	rdi,	0x10
-	call	_alloc_mem
-	;mov	rsi,	rax
-	lea	rsi,	[rax-0x10]
+	mov	rsi,	qword	[end_heap_ptr]
 	call	_printhex
 	call	_newline
 	mov	rdi,	qword	[rbp-0x8]
 	call	_free_mem
-	mov	rsi,	qword	[rbp-0x8]
-	mov	rsi,	qword	[rsi-0x10]
-	call	_printhex
-	call	_newline
-	mov	rsi,	qword	[rbp-0x8]
-	mov	rsi,	qword	[rsi-0x8]
-	call	_printhex
-	call	_newline
-	mov	rdi,	0x10
-	call	_alloc_mem
-	;mov	rsi,	rax
-	lea	rsi,	[rax-0x10]
-	call	_printhex
-	call	_newline
 	mov	rsp,	rbp
 	pop	rbp
 	ret
