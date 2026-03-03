@@ -178,6 +178,9 @@ main:
 	mov	qword	[rbp-0x8],	rax
 	call	_printhex
 	call	_newline
+	mov	rsi,	[start_heap_ptr]
+	call	_printhex
+	call	_newline
 	mov	rsi,	qword	[end_heap_ptr]
 	call	_printhex
 	call	_newline
