@@ -27,6 +27,8 @@ _alloc_mem:
 	mov	rdi,	rax
 _alloc_memJ0:
 	mov	qword	[rbp-0x8],	rdi
+	test	rsi,	rsi
+	jnz	_alloc_memJ7
 	mov	rbx,	qword	[start_heap_ptr]
 	mov	qword	[rbp-0x10],	rbx
 	xor	rdx,	rdx
@@ -63,12 +65,25 @@ _alloc_memJ4:
 	add	rax,	rdi
 	mov	qword	[rax],	0x0
 	mov	qword	[rax+0x8],	rdx
-	jmp	_alloc_memJ6	
+	jmp	_alloc_memJ6
 _alloc_memJ5:
 	add	qword	[rax+0x8],	rdx
 _alloc_memJ6:
 	mov	rax,	qword	[rbp-0x10]
 	add	rax,	0x10
+	jmp	_alloc_memJ8
+_alloc_memJ7:
+	mov	qword	[rdi-0x8],	0x3
+	mov	rsi,	rdi
+	xor	rdi,	rdi
+	mov	rdx,	0x3	; PROC_READ | PROC_WRITE
+	mov	r10,	0x22	; MAP_PRIVATE | MAP_ANON
+	xor	r8,	r8	; -1 for anon fd
+	not	r8
+	xor	r9,	r9	; 0 offset
+	mov	rax,	0x9
+	syscall
+_alloc_memJ8:
 	mov	rsp,	rbp
 	pop	rbp
 	ret
@@ -77,6 +92,8 @@ _alloc_memJ6:
 _free_mem:
 	push	rbp
 	mov	rbp,	rsp
+	cmp	qword	[rdi-0x10],	0x3
+	je	_free_memJ2
 	sub	rsp,	0x10
 	xor	rax,	rax
 	sub	rdi,	0x10
@@ -95,8 +112,13 @@ _free_memJ0:
 	jmp	_free_memJ0
 _free_memJ1:
 	mov	qword	[rdi+0x8],	rbx
-	jmp	_free_memJ2
+	jmp	_free_memJ3
 _free_memJ2:
+	sub	rdi,	0x10
+	mov	rsi,	qword	[rdi+0x8]
+	mov	rax,	0xB
+	syscall
+_free_memJ3:
 	mov	rsp,	rbp
 	pop	rbp
 	ret
@@ -165,27 +187,11 @@ main:
 	push	rbp
 	mov	rbp,	rsp
 	sub	rsp,	0x18
-	mov	rsi,	qword	[end_heap_ptr]
-	call	_printhex
-	call	_newline
-	mov	rdi,	qword	[end_heap_ptr]
-	mov	rax,	qword	[start_heap_ptr]
-	sub	rdi,	rax
-	sub	rdi,	0xF
-	;add	rdi,	0x20
+	mov	rdi,	4096
+	mov	rsi,	0x1
 	call	_alloc_mem
-	mov	rsi,	rax
-	mov	qword	[rbp-0x8],	rax
-	call	_printhex
-	call	_newline
-	mov	rsi,	[start_heap_ptr]
-	call	_printhex
-	call	_newline
-	mov	rsi,	qword	[end_heap_ptr]
-	call	_printhex
-	call	_newline
-	mov	rdi,	qword	[rbp-0x8]
-	call	_free_mem
+;	mov	rax,	rdi
+;	call	_free_mem
 	mov	rsp,	rbp
 	pop	rbp
 	ret
