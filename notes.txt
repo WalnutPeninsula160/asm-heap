@@ -1,0 +1,3 @@
+alloc_mem:
+	qword [rbp-0x8] is the number of bytes needed for the allocation
+	;
