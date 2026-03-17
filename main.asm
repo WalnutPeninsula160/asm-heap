@@ -14,78 +14,48 @@ end_bss:
 section	.text
 global	_start
 
+; rdi is the number of bytes to allocate
 _alloc_mem:
 	push	rbp
 	mov	rbp,	rsp
-	sub	rsp,	0x10
-	add	rdi,	0x10
-	mov	rax,	0xFFFFFFFFFFFFFFF8
+	sub	rsp,	0x8
+	xor	rax,	rax
+	mov	al,	0x8
+	not	rax
 	and	rax,	rdi
 	cmp	rax,	rdi
 	je	_alloc_memJ0
-	add	rax,	0x8
-	mov	rdi,	rax
+	lea	rdi,	[rax+0x8]
 _alloc_memJ0:
 	mov	qword	[rbp-0x8],	rdi
-	test	rsi,	rsi
-	jnz	_alloc_memJ7
-	mov	rbx,	qword	[start_heap_ptr]
-	mov	qword	[rbp-0x10],	rbx
+	lea	rbx,	[start_heap_ptr]
 	xor	rdx,	rdx
 _alloc_memJ1:
 	cmp	rbx,	qword	[end_heap_ptr]
-	jae	_alloc_memJ3
-	cmp	qword	[rbx],	0
-	jne	_alloc_memJ2
-	add	rdx,	qword	[rbx+0x8]
-	cmp	rdx,	qword	[rbp-0x8]
-	jae	_alloc_memJ4
+	jae	_alloc_mem_brk
+	mov	rdi,	qword	[rbx+0x8]
+	add	rdi,	rdx
+	cmp	rdi,	qword	[rbp-0x8]
+	jge	_alloc_mem_alloc
+	mov	rdx,	rdi
 	add	rbx,	qword	[rbx+0x8]
 	jmp	_alloc_memJ1
-_alloc_memJ2:
-	add	rbx,	qword	[rbx+0x8]
-	mov	qword	[rbp-0x10],	rbx
-	xor	rdx,	rdx
-	jmp	_alloc_memJ1
-_alloc_memJ3:
-	mov	rdi,	qword	[rbp-0x8]
-	sub	rdi,	rdx
-	add	rdi,	qword	[end_heap_ptr]
-	mov	rax,	0xC
+_alloc_mem_brk:
+	lea	rdi,	[rbx+rdx]
+	mov	rax,	0x0C
 	syscall
-	mov	qword	[end_heap_ptr],	rax
-_alloc_memJ4:
-	mov	rax,	qword	[rbp-0x10]
-	mov	rdi,	qword	[rbp-0x8]
-	mov	qword	[rax],	0x1
-	mov	qword	[rax+0x8],	rdi
-	sub	rdx,	rdi
-	cmp	rdx,	0x10
-	jb	_alloc_memJ5
-	add	rax,	rdi
-	mov	qword	[rax],	0x0
-	mov	qword	[rax+0x8],	rdx
-	jmp	_alloc_memJ6
-_alloc_memJ5:
-	add	qword	[rax+0x8],	rdx
-_alloc_memJ6:
-	mov	rax,	qword	[rbp-0x10]
-	add	rax,	0x10
-	jmp	_alloc_memJ8
-_alloc_memJ7:
-	mov	qword	[rdi-0x8],	0x3
-	mov	rsi,	rdi
-	xor	rdi,	rdi
-	mov	rdx,	0x3	; PROC_READ | PROC_WRITE
-	mov	r10,	0x22	; MAP_PRIVATE | MAP_ANON
-	xor	r8,	r8	; -1 for anon fd
-	not	r8
-	xor	r9,	r9	; 0 offset
-	mov	rax,	0x9
-	syscall
-_alloc_memJ8:
+	mov	rcx,	0x1
+_alloc_mem_alloc:
+	xor 	rax,	rax
+	mov	qword	[rbx],	rax
+	mov	qword	[rbx+0x8],	rdx
+	test	rcx,	rcx
+	jnz	
+	jmp	_alloc_mem_ret
+_alloc_mem_ret:
 	mov	rsp,	rbp
 	pop	rbp
+	mov	rax,	rbx
 	ret
 
 ; rdi is a pointer to the memory to be freed
@@ -188,7 +158,8 @@ main:
 	mov	rbp,	rsp
 	sub	rsp,	0x18
 	mov	rdi,	4096
-	mov	rsi,	0x1
+;	mov	rsi,	0x1
+	xor	rsi,	rsi
 	call	_alloc_mem
 ;	mov	rax,	rdi
 ;	call	_free_mem

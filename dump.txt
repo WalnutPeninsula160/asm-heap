@@ -189,10 +189,14 @@ Disassembly of section .text:
 0000000000401222 <main>:
   401222:	55                   	push   rbp
   401223:	48 89 e5             	mov    rbp,rsp
-  401226:	48 83 ec 18          	sub    rsp,0x18
-  40122a:	bf 00 10 00 00       	mov    edi,0x1000
-  40122f:	be 01 00 00 00       	mov    esi,0x1
-  401234:	e8 c7 fd ff ff       	call   401000 <_alloc_mem>
-  401239:	48 89 ec             	mov    rsp,rbp
-  40123c:	5d                   	pop    rbp
-  40123d:	c3                   	ret
+  401226:	48 8b 25 f6 0d 00 00 	mov    rsp,QWORD PTR [rip+0xdf6]        # 402023 <start_heap_ptr>
+  40122d:	48 8b 64 24 08       	mov    rsp,QWORD PTR [rsp+0x8]
+  401232:	e8 2a ff ff ff       	call   401161 <_printhex>
+  401237:	e8 0e ff ff ff       	call   40114a <_newline>
+  40123c:	48 83 ec 18          	sub    rsp,0x18
+  401240:	bf 00 10 00 00       	mov    edi,0x1000
+  401245:	48 31 f6             	xor    rsi,rsi
+  401248:	e8 b3 fd ff ff       	call   401000 <_alloc_mem>
+  40124d:	48 89 ec             	mov    rsp,rbp
+  401250:	5d                   	pop    rbp
+  401251:	c3                   	ret
