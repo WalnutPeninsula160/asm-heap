@@ -19,6 +19,7 @@ _alloc_mem:
 	push	rbp
 	mov	rbp,	rsp
 	sub	rsp,	0x8
+	sub	rsp,	0x8
 	xor	rax,	rax
 	mov	al,	0x8
 	not	rax
@@ -50,7 +51,8 @@ _alloc_mem_alloc:
 	mov	qword	[rbx],	rax
 	mov	qword	[rbx+0x8],	rdx
 	test	rcx,	rcx
-	jnz	
+	jnz	_alloc_mem_ret
+	
 	jmp	_alloc_mem_ret
 _alloc_mem_ret:
 	mov	rsp,	rbp
