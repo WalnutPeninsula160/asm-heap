@@ -46,11 +46,14 @@ _alloc_mem_brk:
 	syscall
 	mov	rcx,	0x1
 _alloc_mem_alloc:
+	mov	r8,	qword	[rbx+0x8]
 	xor 	rax,	rax
 	mov	qword	[rbx],	rax
 	mov	qword	[rbx+0x8],	rdx
 	test	rcx,	rcx
-	jnz	
+	jnz	_alloc_mem_ret
+	sub	r8,	rdx
+	;
 	jmp	_alloc_mem_ret
 _alloc_mem_ret:
 	mov	rsp,	rbp
