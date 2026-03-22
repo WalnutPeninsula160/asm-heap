@@ -54,8 +54,14 @@ _alloc_mem_alloc:
 	test	rcx,	rcx
 	jnz	_alloc_mem_ret
 	sub	r8,	rdx
-	;
+	cmp	r8,	0x10
+	jl	_alloc_mem_adj
+	lea	r9,	[rbx+rdx]
+	mov	qword	[r9],	rax
+	mov	qword	[r9+0x8],	r8
 	jmp	_alloc_mem_ret
+_alloc_mem_adj:
+	add	qword	[rbp+0x8],	r8
 _alloc_mem_ret:
 	mov	rsp,	rbp
 	pop	rbp
@@ -126,6 +132,7 @@ _printhex:
 	syscall
 	ret
 
+ALIGN	0X10
 _start:
 ;	before anything, make sure the heap starting addresss and the current system break is set and aligned to 8 bytes
 	mov	rax,	0xFFFFFFFFFFFFFFF8
@@ -162,11 +169,19 @@ main:
 	mov	rbp,	rsp
 	sub	rsp,	0x18
 	mov	rdi,	4096
-;	mov	rsi,	0x1
-	xor	rsi,	rsi
 	call	_alloc_mem
+	mov	qword	[rbp-0x8],	rax
+	mov	rsi,	qword	[rax]
+	call	_printhex
+	call	_newline
+	mov	rsi,	qword	[rbp-0x8]
+	mov	rsi,	qword	[rsi+0x8]
+	call	_printhex
+	call	_newline
 ;	mov	rax,	rdi
 ;	call	_free_mem
 	mov	rsp,	rbp
 	pop	rbp
 	ret
+
+
